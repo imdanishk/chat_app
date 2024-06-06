@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -10,17 +11,42 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   final _form = GlobalKey<FormState>();
 
+  final _firebase = FirebaseAuth.instance;
+
   var _isLogin = true;
   var _enteredEmail = '';
   var _enteredPassword = '';
 
+  void _submit() async {
+    final isValid = _form.currentState!.validate();
 
-    void _submit() {
-      final isValid = _form.currentState!.validate();
+    if (!isValid) {
+      return;
+    }
 
-      if (isValid) {
-        _form.currentState!.save();
+    _form.currentState!.save();
+
+    try {
+      if (_isLogin) {
+        final userCredentials = await _firebase.signInWithEmailAndPassword(
+            email: _enteredEmail, password: _enteredPassword);
+        print(userCredentials);
+      } else {
+        final userCredentials = await _firebase.createUserWithEmailAndPassword(
+            email: _enteredEmail, password: _enteredPassword);
+        print(userCredentials);
       }
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'email-already-in-use') {
+        //...
+      }
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.message ?? 'Authentication failed.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -48,8 +74,8 @@ class _AuthScreenState extends State<AuthScreen> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           TextFormField(
-                            decoration:
-                                const InputDecoration(labelText: 'Email address'),
+                            decoration: const InputDecoration(
+                                labelText: 'Email address'),
                             keyboardType: TextInputType.emailAddress,
                             autocorrect: false,
                             textCapitalization: TextCapitalization.none,
@@ -59,7 +85,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                   !value.contains('@')) {
                                 return 'Please enter a valid email address.';
                               }
-                      
+
                               return null;
                             },
                             onSaved: (newValue) {
@@ -75,11 +101,11 @@ class _AuthScreenState extends State<AuthScreen> {
                               if (value == null || value.trim().length < 6) {
                                 return 'Password must be atleast 6 characters long. ';
                               }
-                      
+
                               return null;
                             },
                             onSaved: (newValue) {
-                              _enteredPassword  = newValue!;
+                              _enteredPassword = newValue!;
                             },
                           ),
                           const SizedBox(height: 12),
